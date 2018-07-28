@@ -13,6 +13,11 @@ def detect_text_uri(uri):
    client = vision.ImageAnnotatorClient()
    image = vision.types.Image()
    image.source.image_uri = uri
+
+   r = redis.Redis(
+      host='127.0.0.1',
+      port=6379,
+      password='')
    """defines the uri to be called on as what the user defined it to be in the command call"""
 
    response = client.text_detection(image=image)
@@ -20,20 +25,19 @@ def detect_text_uri(uri):
    print('Texts:')
 
    for text in texts:
-      textDescription = u'\n"{}"'.format(text.description)
+      textDescription = u'"{}",'.format(text.description)
       print(textDescription.encode('utf-8'))
 
       vertices = (['({},{})'.format(vertex.x, vertex.y)
          for vertex in text.bounding_poly.vertices])
 
-   print('bounds: {}'.format(','.join(vertices)))
-   r = redis.Redis(
-   host='127.0.0.1',
-   port=6379,
-   password='')
+      if vertex.x in range(920,935) and vertex.y in range(1725,1740):
+         r.set(textDescription.encode('utf-8'), 'vLength')
+         print('indexed vLength')
+      else:
+         return
 
-   r.set(uri, textDescription.encode('utf-8'))
-   print('redis data set!')
+   print('bounds: {}'.format(','.join(vertices)))
 
 def redis_scan(leadData):
    value = r.get(leadData)
