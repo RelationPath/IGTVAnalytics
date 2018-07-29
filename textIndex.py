@@ -33,33 +33,33 @@ def detect_text_uri(uri):
    comments = 'was not found'
 
    progressDate = ''
-   progressTitle = ''
+   title = '' 
    lastStore = ''
+   onTitle = True
 
    for text in texts:
       textDescription = u'{}'.format(text.description)
+     # print(textDescription.encode('utf-8'))
 
       vertices = (['({},{})'.format(vertex.x, vertex.y)
-         for vertex in text.bounding_poly.vertices])
+            for vertex in text.bounding_poly.vertices])
 
-      if vertex.x in range(0,160) and vertex.y in range(120,250):
+      if vertex.y < 120:
+         title = title + ' ' +  textDescription.encode('utf-8')
+         progressTitle = textDescription.encode('utf-8')
+      elif vertex.x in range(0,160) and vertex.y in range(120,250):
          account = textDescription.encode('utf-8')
-         print('account' and account)
       elif vertex.x in range(375,800) and vertex.y in range(121,185):
          date = progressDate + ' ' +  textDescription.encode('utf-8')
          progressDate = textDescription.encode('utf-8')
       elif vertex.x in range(920,935) and vertex.y in range(1725,1740):
          length = textDescription.encode('utf-8')
-      elif vertex.x in range(1,10000) and vertex.y in range(0,119):
-         title = progressTitle + ' ' +  textDescription.encode('utf-8')
-         progressTitle = textDescription.encode('utf-8')
       elif textDescription.encode('utf-8') == 'views':
          views = lastStore
       elif textDescription.encode('utf-8') == 'comments':
          comments = lastStore
 
       lastStore = textDescription.encode('utf-8')
-
 
    print(account + '/' + date + '/' + length + '/' + title + '/' + views + '/' + comments)
 
