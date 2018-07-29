@@ -53,11 +53,9 @@ def detect_text_uri(uri):
       elif vertex.x in range(1,10000) and vertex.y in range(0,119):
          title = progressTitle + ' ' +  textDescription.encode('utf-8')
          progressTitle = textDescription.encode('utf-8')
-      elif vertex.x in range(30,45) and vertex.y in range(1480,1490):
-         if textDescription.encode('utf-8') = 'views'
+      elif textDescription.encode('utf-8') == 'views':
          views = lastStore
-      elif vertex.x in range(30,45) and vertex.y in range(1480,1490):
-         if textDescription.encode('utf-8') = 'comments'
+      elif textDescription.encode('utf-8') == 'comments':
          comments = lastStore
 
       lastStore = textDescription.encode('utf-8')
@@ -69,7 +67,7 @@ def detect_text_uri(uri):
    r.set(account + '-length', length)
    r.set(account + '-title', title)
    r.set(account + '-views', views)
-   r.set(account + '-comments, comments)
+   r.set(account + '-comments', comments)
 
 def redis_scan(leadData):
    value = r.get(leadData)
