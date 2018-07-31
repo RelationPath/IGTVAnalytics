@@ -7,7 +7,7 @@ from google.cloud import storage
 from google.cloud import vision
 from google.protobuf import json_format
 
-r = redis.Redis(
+r = redis.StrictRedis(
    host='127.0.0.1',
    port=6379,
    password='')
@@ -23,7 +23,7 @@ def detect_text_uri(uri):
 
    response = client.text_detection(image=image)
    texts = response.text_annotations
-   print('Texts:')
+   print('Indexed!')
 
    account = 'was not found'
    date = 'was not found'
@@ -33,25 +33,31 @@ def detect_text_uri(uri):
    comments = 'was not found'
 
    progressDate = ''
+   date = ''
    title = '' 
    lastStore = ''
    onTitle = True
+   onAccount = True
 
    for text in texts:
       textDescription = u'{}'.format(text.description)
-     # print(textDescription.encode('utf-8'))
+      #print(textDescription.encode('utf-8'))
 
       vertices = (['({},{})'.format(vertex.x, vertex.y)
             for vertex in text.bounding_poly.vertices])
 
-      if vertex.y < 120:
-         title = title + ' ' +  textDescription.encode('utf-8')
+      if vertex.y < 155:
+         title = title + " " +  textDescription.encode('utf-8')
          progressTitle = textDescription.encode('utf-8')
-      elif vertex.x in range(0,160) and vertex.y in range(120,250):
-         account = textDescription.encode('utf-8')
-      elif vertex.x in range(375,800) and vertex.y in range(121,185):
-         date = progressDate + ' ' +  textDescription.encode('utf-8')
-         progressDate = textDescription.encode('utf-8')
+      elif vertex.x > 44 and vertex.y in range(155,250):
+         if onAccount:
+            account = textDescription.encode('utf-8')
+            onAccount = False
+         else: 
+            date = date + " " +  textDescription.encode('utf-8')
+      #elif vertex.x in range(300,1000) and vertex.y in range(121,185):
+         #date = progressDate + " " +  textDescription.encode('utf-8')
+         #progressDate = textDescription.encode('utf-8')
       elif vertex.x in range(920,935) and vertex.y in range(1725,1740):
          length = textDescription.encode('utf-8')
       elif textDescription.encode('utf-8') == 'views':
@@ -63,14 +69,14 @@ def detect_text_uri(uri):
 
    print(account + '/' + date + '/' + length + '/' + title + '/' + views + '/' + comments)
 
-   r.set(account + '-date', date)
-   r.set(account + '-length', length)
-   r.set(account + '-title', title)
-   r.set(account + '-views', views)
-   r.set(account + '-comments', comments)
+   r.lpush(account + '-dates', "/" + title + "/, was released: " + date + "           ")
+   r.lpush(account + '-lengths', "/" + title + "/, length: " + length + "          ")
+   r.lpush(account + '-titles', title + "         ")
+   r.lpush(account + '-views',  "/" + title + "/, view count: " + views + "           ")
+   r.lpush(account + '-comments', "/" + title + "/, comment count: " + comments + "           ")
 
 def redis_scan(leadData):
-   value = r.get(leadData)
+   value = r.lrange(leadData, 0, -1)
    print('scanned!')
    print(value)
 
