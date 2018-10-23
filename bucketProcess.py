@@ -6,6 +6,7 @@ import redis
 import argparse
 import io
 import re
+import os
 
 from google.cloud import storage
 from google.cloud import vision
@@ -85,6 +86,21 @@ def detect_text_uri(uri):
    r.lpush(account + '-views',  "/" + title + "/, view count: " + views + "           ")
    r.lpush(account + '-comments', "/" + title + "/, comment count: " + comments + "           ")
 
+def rclone_transfer():
+    os.system("rclone copy gDriveIGTV:GooglePhotos gCloudIGTV:igtv-input-data")
+    os.system("rclone delete gDriveIGTV:GooglePhotos")
+    print('transfered!')
+
+def delete_blob(bucket_name, blob_name):
+    """Deletes a blob from the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+
+    blob.delete()
+
+    print('Blob {} deleted.'.format(blob_name))
+
 def make_blob_public(bucket_name, blob_name):
     """Makes a blob publicly accessible."""
     storage_client = storage.Client()
@@ -96,6 +112,7 @@ def make_blob_public(bucket_name, blob_name):
     detect_text_uri(blobURI)
     print('Blob {} is publicly accessible at {}'.format(
         blob.name, blob.public_url))
+    delete_blob(bucket_name, blob_name)
 
 def list_blobs(bucket_name):
     """Lists all the blobs in the bucket."""
@@ -106,5 +123,7 @@ def list_blobs(bucket_name):
 
     for blob in blobs:
         make_blob_public(bucketSet, blob.name)
+    rclone_transfer()
+    list_blobs(bucketSet)
 
 list_blobs(bucketSet)
