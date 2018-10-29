@@ -1,4 +1,4 @@
-#By: Brayton Kerekffy
+#By: Brayton Kerekffy for Relation Path
 import argparse
 import datetime
 import pprint
