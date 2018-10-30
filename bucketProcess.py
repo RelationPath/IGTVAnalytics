@@ -7,18 +7,21 @@ import argparse
 import io
 import re
 import os
+import csv
+import datetime
+import sys
+import time
 
 from google.cloud import storage
 from google.cloud import vision
 from google.protobuf import json_format
-
-
-# [START storage_upload_file]
-from google.cloud import storage
+from google.cloud import pubsub_v1
 
 # [END storage_upload_file]
+now = datetime.datetime.now()
 
-bucketSet = "igtv-input-data"
+inputBucketSet = "igtv-input-data"
+outputBucketSet = "igtv-analytics"
 
 r = redis.StrictRedis(
    host='127.0.0.1',
@@ -80,11 +83,61 @@ def detect_text_uri(uri):
 
    print(account + '/' + date + '/' + length + '/' + title + '/' + views + '/' + comments)
 
-   r.lpush(account + '-dates', "/" + title + "/, was released: " + date + "           ")
-   r.lpush(account + '-lengths', "/" + title + "/, length: " + length + "          ")
-   r.lpush(account + '-titles', title + "         ")
-   r.lpush(account + '-views',  "/" + title + "/, view count: " + views + "           ")
-   r.lpush(account + '-comments', "/" + title + "/, comment count: " + comments + "           ")
+   r.lpush(account + '-dates', "/" + title + "/, was released: " + date)
+   r.lpush(account + '-lengths', "/" + title + "/, length: " + length)
+   r.lpush(account + '-titles', title)
+   r.lpush(account + '-views',  "/" + title + "/, view count: " + views)
+   r.lpush(account + '-comments', "/" + title + "/, comment count: " + comments)
+
+def redis_scan(leadData, bucket_name, blob_name):
+   csvFileName = leadData + '-' + '%d' % now.month + ',' + '%d' % now.day + ',' + '%d' % now.year  + '.csv'
+   print(csvFileName)
+   os.system('redis-cli --csv lrange ' + leadData + ' 0 -1 >' + csvFileName)
+   storage_client = storage.Client()
+   bucket = storage_client.get_bucket(bucket_name)
+   blob = bucket.blob(blob_name)
+
+   blob.upload_from_filename(csvFileName)
+
+   print('File {} uploaded to {}.'.format(
+        csvFileName,
+        blob_name))
+# [END storage_upload_file]
+
+def receive_messages(project_id, subscription_name):
+    subscriber = pubsub_v1.SubscriberClient()
+    # The `subscription_path` method creates a fully qualified identifier
+    # in the form `projects/{project_id}/subscriptions/{subscription_name}`
+    subscription_path = subscriber.subscription_path(
+        project_id, subscription_name)
+
+
+    """Receives messages from a pull subscription."""
+
+    # TODO project_id = "Your Google Cloud Project ID"
+    # TODO subscription_name = "Your Pub/Sub subscription name"
+
+    subscriber = pubsub_v1.SubscriberClient()
+    # The `subscription_path` method creates a fully qualified identifier
+    # in the form `projects/{project_id}/subscriptions/{subscription_name}`
+    subscription_path = subscriber.subscription_path(
+        project_id, subscription_name)
+
+    def callback(message):
+        messageData = '{}'.format(message.data)
+	print('{}'.format(message.data))
+        print('Listening for messages on {}'.format(subscription_path))
+        csvFileName = messageData + '-' + '%d' % now.month + ',' + '%d' % now.day + ',' + '%d' % now.year  + '.csv'
+        redis_scan(messageData, outputBucketSet, csvFileName)
+        message.ack()
+
+    subscriber.subscribe(subscription_path, callback=callback)
+    # The subscriber is non-blocking. We must keep the main thread from
+    # exiting to allow it to process messages asynchronously in the background.
+   # while True:
+       # time.sleep(60)
+    # [END pubsub_subscriber_async_pull]
+    # [END pubsub_quickstart_subscriber]
 
 def rclone_transfer():
     os.system("rclone copy gDriveIGTV:GooglePhotos gCloudIGTV:igtv-input-data")
@@ -122,8 +175,9 @@ def list_blobs(bucket_name):
     blobs = bucket.list_blobs()
 
     for blob in blobs:
-        make_blob_public(bucketSet, blob.name)
+        make_blob_public(inputBucketSet, blob.name)
+	receive_messages('igtv-analytics-system','csvRequest')
     rclone_transfer()
-    list_blobs(bucketSet)
+    list_blobs(inputBucketSet)
 
-list_blobs(bucketSet)
+list_blobs(inputBucketSet)
